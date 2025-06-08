@@ -1,171 +1,167 @@
 /**
  * @file main.js
- * @description Điểm khởi đầu của ứng dụng (Entry Point).
+ * @description Điểm khởi đầu của ứng dụng (Entry Point) - Phiên bản Firebase.
  */
 
 import * as DOM from './dom.js';
 import * as Catalog from './catalog.js';
 import * as Quote from './quote.js';
 import * as UI from './ui.js';
+import { db, auth } from './firebase.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+let currentUserId = null;
 
-    // === SETUP EVENT LISTENERS ===
+// === AUTHENTICATION LOGIC ===
+
+auth.onAuthStateChanged(async (user) => {
+    const authStatusEl = document.getElementById('auth-status');
+    const logoutButton = document.getElementById('logoutButton');
+
+    if (user) {
+        // Người dùng đã đăng nhập.
+        currentUserId = user.uid;
+        authStatusEl.textContent = `Đã đăng nhập với User ID: ${user.uid.substring(0, 10)}... (Ẩn danh)`;
+        authStatusEl.style.color = 'green';
+        logoutButton.style.display = 'inline-block';
+        
+        UI.showLoader();
+        await initializeAppForUser(currentUserId);
+        UI.hideLoader();
+
+    } else {
+        // Người dùng chưa đăng nhập.
+        currentUserId = null;
+        authStatusEl.textContent = 'Đang đăng nhập ẩn danh...';
+        logoutButton.style.display = 'none';
+        auth.signInAnonymously().catch((error) => {
+            console.error("Lỗi đăng nhập ẩn danh:", error);
+            authStatusEl.textContent = 'Lỗi đăng nhập. Vui lòng làm mới trang.';
+            authStatusEl.style.color = 'red';
+        });
+    }
+});
+
+document.getElementById('logoutButton').addEventListener('click', () => {
+    if (confirm('Bạn có muốn đăng xuất và tạo một phiên làm việc mới không? Dữ liệu chưa lưu sẽ mất.')) {
+        auth.signOut().then(() => {
+            // Xóa dữ liệu tạm trên UI và bắt đầu lại
+             window.location.reload();
+        });
+    }
+});
+
+
+// === APP INITIALIZATION ===
+
+async function initializeAppForUser(userId) {
+    console.log(`Initializing app for user: ${userId}`);
     
-    DOM.tabButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
-            const tabName = e.target.dataset.tab;
-            UI.openTab(tabName);
-            if (tabName === 'tabSettings') {
-                UI.updateStorageStatus();
-            }
-        });
-    });
+    // Tải tất cả dữ liệu từ Firestore
+    await Promise.all([
+        Catalog.loadMainCategories(userId),
+        Catalog.loadCatalogFromFirestore(userId),
+        Quote.loadCompanySettings(userId),
+        Quote.loadSavedQuotesFromFirestore(userId)
+    ]);
 
-    if (DOM.excelFileInputManage) DOM.excelFileInputManage.addEventListener('change', Catalog.handleExcelFileGeneric);
-    if (DOM.reloadExcelButton) DOM.reloadExcelButton.addEventListener('click', () => DOM.excelFileInputManage.click());
-    if (DOM.catalogSearchInput) DOM.catalogSearchInput.addEventListener('input', Catalog.renderCatalogPreviewTable);
-    if (DOM.exportCatalogButton) DOM.exportCatalogButton.addEventListener('click', Catalog.exportCatalogHandler);
-    if (DOM.saveCatalogEntryButton) DOM.saveCatalogEntryButton.addEventListener('click', Catalog.saveCatalogEntryHandler);
-    if (DOM.cancelCatalogEntryEditButton) DOM.cancelCatalogEntryEditButton.addEventListener('click', Catalog.resetCatalogEditForm);
-    if (DOM.catalogPreviewList) {
-        DOM.catalogPreviewList.addEventListener('click', (e) => {
-            const target = e.target;
-            const id = target.dataset.id;
-            if (!id) return;
-            if (target.classList.contains('edit-btn')) {
-                Catalog.editCatalogEntry(id);
-            } else if (target.classList.contains('delete-btn')) {
-                Catalog.deleteCatalogEntry(id);
-            }
-        });
-    }
-
-    if (DOM.addOrUpdateMainCategoryButton) DOM.addOrUpdateMainCategoryButton.addEventListener('click', Catalog.addOrUpdateMainCategoryHandler);
-    if (DOM.cancelEditMainCategoryButton) DOM.cancelEditMainCategoryButton.addEventListener('click', Catalog.resetMainCategoryForm);
-    if (DOM.mainCategoriesTableBody) {
-        DOM.mainCategoriesTableBody.addEventListener('click', (e) => {
-            const target = e.target;
-            const id = target.dataset.id;
-            if (!id) return;
-
-            if (target.classList.contains('edit-btn')) {
-                Catalog.editMainCategory(id);
-            } else if (target.classList.contains('delete-btn')) {
-                const quoteDeps = {
-                    getCurrentQuoteItems: Quote.getCurrentQuoteItems,
-                    getSavedQuotes: Quote.getSavedQuotes,
-                    updateQuoteItem: Quote.updateQuoteItem,
-                    updateSavedQuote: Quote.updateSavedQuote,
-                };
-                Catalog.deleteMainCategory(id, quoteDeps);
-            }
-        });
-    }
-
-    if (DOM.catalogItemCombobox) {
-        DOM.catalogItemCombobox.addEventListener('input', Quote.handleCatalogComboboxSelection);
-    }
-    if (DOM.itemImageFileQuoteForm) DOM.itemImageFileQuoteForm.addEventListener('change', Quote.itemImageFileQuoteFormHandler);
-    if (DOM.addOrUpdateItemButtonForm) DOM.addOrUpdateItemButtonForm.addEventListener('click', Quote.addOrUpdateItemFromForm);
-    if (DOM.quickSaveToCatalogButtonForm) DOM.quickSaveToCatalogButtonForm.addEventListener('click', Quote.quickSaveToCatalogFromFormHandler);
-    if (DOM.cancelEditQuoteItemButtonForm) DOM.cancelEditQuoteItemButtonForm.addEventListener('click', Quote.resetQuoteItemFormEditingState);
-    if (DOM.prepareNewQuoteItemButton) DOM.prepareNewQuoteItemButton.addEventListener('click', Quote.prepareNewQuoteItemHandler);
-
-    if (DOM.itemListPreviewTableBody) {
-        DOM.itemListPreviewTableBody.addEventListener('click', (e) => {
-            const target = e.target.closest('button');
-            if (!target) return;
-            const id = target.dataset.id;
-            if (!id) return;
-
-            if (target.classList.contains('edit-btn')) {
-                Quote.editQuoteItemOnForm(id);
-            } else if (target.classList.contains('delete-btn')) {
-                Quote.deleteQuoteItem(id);
-            } else if (target.classList.contains('quick-save-to-catalog-btn-row')) {
-                Quote.saveThisQuoteItemToMasterCatalog(id);
-            }
-        });
-    }
-
-    if (DOM.applyDiscountCheckbox) DOM.applyDiscountCheckbox.addEventListener('change', Quote.calculateTotals);
-    if (DOM.applyTaxCheckbox) DOM.applyTaxCheckbox.addEventListener('change', Quote.calculateTotals);
+    // Tải báo giá đang làm việc dở
+    await Quote.loadCurrentWorkingQuote(userId);
     
-    const inputsToAutoRecalculate = [
-        DOM.discountValueInput, 
-        DOM.discountTypeSelect, 
-        DOM.taxPercentInput
-    ];
-    inputsToAutoRecalculate.forEach(input => {
-        if (input) {
-            input.addEventListener('input', Quote.calculateTotals);
-            input.addEventListener('change', Quote.calculateTotals);
-        }
-    });
-    
-    if (DOM.applyInstallmentsCheckbox) DOM.applyInstallmentsCheckbox.addEventListener('change', Quote.calculateTotals);
-    const installmentInputs = [
-        DOM.installmentName1, DOM.installmentValue1, DOM.installmentType1,
-        DOM.installmentName2, DOM.installmentValue2, DOM.installmentType2,
-        DOM.installmentName3, DOM.installmentValue3, DOM.installmentType3,
-        DOM.installmentName4, DOM.installmentValue4, DOM.installmentType4,
-    ];
-    installmentInputs.forEach(input => {
-        if(input) {
-            input.addEventListener('input', Quote.calculateTotals);
-            input.addEventListener('change', Quote.calculateTotals);
-        }
-    });
+    // Thiết lập các event listener sau khi dữ liệu đã sẵn sàng
+    setupEventListeners(userId);
 
-    if (DOM.saveCurrentQuoteButton) DOM.saveCurrentQuoteButton.addEventListener('click', Quote.saveCurrentQuoteToListHandler);
-    if (DOM.exportPdfButton) DOM.exportPdfButton.addEventListener('click', UI.exportToPdf);
-    if (DOM.printQuoteButton) DOM.printQuoteButton.addEventListener('click', UI.printCurrentQuote);
-    if (DOM.clearQuoteButton) DOM.clearQuoteButton.addEventListener('click', Quote.clearQuoteFormHandler);
-
-    if (DOM.savedQuotesTableBody) {
-        DOM.savedQuotesTableBody.addEventListener('click', (e) => {
-            const target = e.target;
-            const id = target.dataset.id;
-            if (!id) return;
-            if (target.classList.contains('load-quote-btn')) {
-                Quote.loadQuoteFromList(id);
-            } else if (target.classList.contains('delete-btn')) {
-                Quote.deleteQuoteFromList(id);
-            }
-        });
-    }
-
-    if (DOM.saveCompanySettingsButton) DOM.saveCompanySettingsButton.addEventListener('click', Quote.saveCompanySettingsHandler);
-    if (DOM.companyLogoFileInput) DOM.companyLogoFileInput.addEventListener('change', Quote.companyLogoFileHandler);
-    
-    if (DOM.clearAllDataButton) {
-        DOM.clearAllDataButton.addEventListener('click', () => {
-            if (confirm('BẠN CÓ CHẮC CHẮN MUỐN XÓA TẤT CẢ DỮ LIỆU?\n\nHành động này sẽ xóa vĩnh viễn:\n- Tất cả các báo giá đã lưu\n- Toàn bộ danh mục sản phẩm\n- Danh mục chính\n- Cài đặt công ty\n\nHành động này không thể hoàn tác!')) {
-                localStorage.clear();
-                alert('Đã xóa toàn bộ dữ liệu. Trang sẽ được tải lại.');
-                window.location.reload();
-            }
-        });
-    }
-
-    // === INITIALIZE APP ===
-    console.log("Initializing Quotation App...");
+    // Cài đặt giao diện
     UI.openTab('tabQuote');
-    Quote.loadCompanySettings();
-    Quote.loadSavedQuotesFromLocalStorage();
-    Catalog.loadCatalogFromLocalStorage();
-    Catalog.loadMainCategories(); 
-    Quote.loadCurrentWorkingQuoteFromLocalStorage(); 
-
-    UI.updateStorageStatus();
-
     if (DOM.quoteDateInput && !DOM.quoteDateInput.valueAsDate && DOM.quoteDateInput.value === '') {
         DOM.quoteDateInput.value = new Date().toISOString().split('T')[0];
     }
-    if (!Quote.getCurrentQuoteId() && DOM.printQuoteIdEl) {
-        Quote.startNewQuote();
+    if (!Quote.getCurrentQuoteId()) {
+        Quote.startNewQuote(userId);
     }
     
-    console.log("App Initialized.");
-});
+    console.log("App Initialized for user.");
+}
+
+// === EVENT LISTENERS SETUP ===
+function setupEventListeners(userId) {
+    // ---- TABS ----
+    DOM.tabButtons.forEach(button => {
+        button.addEventListener('click', (e) => UI.openTab(e.target.dataset.tab));
+    });
+
+    // ---- CATALOG ----
+    DOM.excelFileInputManage?.addEventListener('change', (e) => Catalog.handleExcelFileGeneric(e, userId));
+    DOM.reloadExcelButton?.addEventListener('click', () => DOM.excelFileInputManage.click());
+    DOM.catalogSearchInput?.addEventListener('input', Catalog.renderCatalogPreviewTable);
+    DOM.exportCatalogButton?.addEventListener('click', Catalog.exportCatalogHandler);
+    DOM.saveCatalogEntryButton?.addEventListener('click', () => Catalog.saveCatalogEntryHandler(userId));
+    DOM.cancelCatalogEntryEditButton?.addEventListener('click', Catalog.resetCatalogEditForm);
+    DOM.catalogPreviewList?.addEventListener('click', (e) => {
+        const id = e.target.dataset.id;
+        if (!id) return;
+        if (e.target.classList.contains('edit-btn')) Catalog.editCatalogEntry(id);
+        else if (e.target.classList.contains('delete-btn')) Catalog.deleteCatalogEntry(id, userId);
+    });
+
+    // ---- MAIN CATEGORIES ----
+    DOM.addOrUpdateMainCategoryButton?.addEventListener('click', () => Catalog.addOrUpdateMainCategoryHandler(userId));
+    DOM.cancelEditMainCategoryButton?.addEventListener('click', Catalog.resetMainCategoryForm);
+    DOM.mainCategoriesTableBody?.addEventListener('click', (e) => {
+        const id = e.target.dataset.id;
+        if (!id) return;
+        if (e.target.classList.contains('edit-btn')) Catalog.editMainCategory(id);
+        else if (e.target.classList.contains('delete-btn')) Catalog.deleteMainCategory(id, userId);
+    });
+
+    // ---- QUOTE ITEMS ----
+    DOM.catalogItemCombobox?.addEventListener('input', Quote.handleCatalogComboboxSelection);
+    DOM.itemImageFileQuoteForm?.addEventListener('change', Quote.itemImageFileQuoteFormHandler);
+    DOM.addOrUpdateItemButtonForm?.addEventListener('click', () => Quote.addOrUpdateItemFromForm(userId));
+    DOM.quickSaveToCatalogButtonForm?.addEventListener('click', () => Quote.quickSaveToCatalogFromFormHandler(userId));
+    DOM.cancelEditQuoteItemButtonForm?.addEventListener('click', Quote.resetQuoteItemFormEditingState);
+    DOM.prepareNewQuoteItemButton?.addEventListener('click', Quote.prepareNewQuoteItemHandler);
+    DOM.itemListPreviewTableBody?.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+        const id = target.dataset.id;
+        if (!id) return;
+
+        if (target.classList.contains('edit-btn')) Quote.editQuoteItemOnForm(id);
+        else if (target.classList.contains('delete-btn')) Quote.deleteQuoteItem(id, userId);
+        else if (target.classList.contains('quick-save-to-catalog-btn-row')) Quote.saveThisQuoteItemToMasterCatalog(id, userId);
+    });
+    
+    // ---- TOTALS & INSTALLMENTS ----
+    const inputsToAutoRecalculate = [
+        DOM.discountValueInput, DOM.discountTypeSelect, DOM.taxPercentInput,
+        DOM.applyDiscountCheckbox, DOM.applyTaxCheckbox, DOM.applyInstallmentsCheckbox,
+        DOM.installmentValue1, DOM.installmentValue2, DOM.installmentValue3, DOM.installmentValue4,
+        DOM.installmentType1, DOM.installmentType2, DOM.installmentType3, DOM.installmentType4,
+    ];
+    inputsToAutoRecalculate.forEach(input => {
+        input?.addEventListener('input', () => Quote.calculateTotals(userId));
+    });
+    
+    // ---- MAIN ACTIONS ----
+    DOM.saveCurrentQuoteButton?.addEventListener('click', () => Quote.saveCurrentQuoteToListHandler(userId));
+    DOM.exportPdfButton?.addEventListener('click', UI.exportToPdf);
+    DOM.printQuoteButton?.addEventListener('click', UI.printCurrentQuote);
+    DOM.clearQuoteButton?.addEventListener('click', () => Quote.clearQuoteFormHandler(userId));
+    
+    // ---- SAVED QUOTES ----
+    DOM.savedQuotesTableBody?.addEventListener('click', (e) => {
+        const id = e.target.dataset.id;
+        if (!id) return;
+        if (e.target.classList.contains('load-quote-btn')) Quote.loadQuoteFromList(id, userId);
+        else if (e.target.classList.contains('delete-btn')) Quote.deleteQuoteFromList(id, userId);
+    });
+
+    // ---- SETTINGS ----
+    DOM.saveCompanySettingsButton?.addEventListener('click', () => Quote.saveCompanySettingsHandler(userId));
+    DOM.companyLogoFileInput?.addEventListener('change', Quote.companyLogoFileHandler);
+    DOM.clearAllDataButton?.addEventListener('click', () => {
+        alert("Chức năng này đang được phát triển. Vui lòng liên hệ nhà phát triển để xóa dữ liệu.");
+        // Chú ý: Xóa dữ liệu trên Firestore từ client là một hành động phức tạp và cần được bảo mật cẩn thận.
+        // Tạm thời vô hiệu hóa để tránh người dùng vô tình xóa dữ liệu.
+    });
+}

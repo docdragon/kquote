@@ -3,107 +3,97 @@
  * @description Chứa các hàm tiện ích chung, có thể tái sử dụng trong toàn bộ ứng dụng.
  */
 
+/**
+ * Định dạng một số thành chuỗi tiền tệ VNĐ.
+ * @param {number} number - Số cần định dạng.
+ * @returns {string} Chuỗi đã định dạng.
+ */
 export function formatCurrency(number) {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(number || 0);
 }
 
+/**
+ * Định dạng ngày thành chuỗi 'DD/MM/YYYY'.
+ * @param {string|Date} dateStringOrDate - Ngày cần định dạng.
+ * @returns {string} Chuỗi ngày đã định dạng.
+ */
 export function formatDate(dateStringOrDate) {
     if (!dateStringOrDate) return '';
-    const date = new Date(dateStringOrDate);
-    if (isNaN(date.getTime())) return '';
     try {
+        const date = new Date(dateStringOrDate);
+        if (isNaN(date.getTime())) return '';
         return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
     } catch (e) {
         return '';
     }
 }
 
+/**
+ * Chuyển số thành chữ Tiếng Việt.
+ * @param {number|string} s - Số cần chuyển đổi.
+ * @returns {string} Chuỗi chữ tương ứng.
+ */
 export function numberToWordsVi(s) {
     const dg = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
-    const dv = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ', 'triệu tỷ', 'tỷ tỷ'];
+    const dv = ['', 'nghìn', 'triệu', 'tỷ'];
     s = String(s).split('.')[0];
-    if (s === "0" || s === "") return "Không";
+    if (s === "0") return "Không";
     let i = s.length;
-    if (i == 0) return dg[0];
-    let str = "",
-        M = 0;
+    let str = "";
+    let M = 0;
     while (i > 0) {
         let CS = "";
-        let H = -1,
-            CH = -1,
-            DVV = -1;
-        DVV = parseInt(s.substring(i - 1, i));
+        let DVV = parseInt(s.substring(i - 1, i));
         i--;
-        if (i > 0) {
-            CH = parseInt(s.substring(i - 1, i));
-            i--;
-        }
-        if (i > 0) {
-            H = parseInt(s.substring(i - 1, i));
-            i--;
-        }
+        let CH = (i > 0) ? parseInt(s.substring(i - 1, i--)) : -1;
+        let H = (i > 0) ? parseInt(s.substring(i - 1, i--)) : -1;
+
         if (H !== -1 && H !== 0) CS += dg[H] + " trăm ";
-        else if (H === 0 && (CH !== 0 || DVV !== 0) && (M > 0 || s.length > 3) && str.trim() !== "") CS += "không trăm ";
-        if (CH !== -1 && CH !== 0) {
-            if (CH === 1) CS += "mười ";
-            else CS += dg[CH] + " mươi ";
-        } else if (CH === 0 && DVV !== 0 && H !== -1 && (H !== 0 || (M > 0 && str.trim() !== "") || s.length > 3)) CS += "lẻ ";
+        if (CH !== -1 && CH !== 0) CS += (CH === 1 ? "mười " : dg[CH] + " mươi ");
+        if (CH === 0 && DVV !== 0 && H !== -1) CS += "lẻ ";
+        
         if (DVV !== -1 && DVV !== 0) {
-            if (CH === 1 && DVV === 1) {
-                CS = CS.replace("mười ", "mười một ");
-            } else if (CH === 1 && DVV === 5) {
-                CS = CS.replace("mười ", "mười lăm ");
-            } else if (CH !== 1 && DVV === 1 && CH !== 0) {
-                CS += "mốt ";
-            } else if (CH !== 1 && DVV === 5 && CH !== 0) {
-                CS += "lăm ";
-            } else if (DVV === 4 && CH !== undefined && CH > 1) {
-                CS += "tư ";
-            } else {
-                CS += dg[DVV] + " ";
-            }
+            if (CH === 1 && DVV === 1) CS = CS.replace("mười ", "mười một ");
+            else if (CH === 1 && DVV === 5) CS = CS.replace("mười ", "mười lăm ");
+            else if (CH !== 1 && DVV === 1 && CH !== 0) CS += "mốt ";
+            else if (DVV === 5 && CH > 1) CS += "lăm ";
+            else CS += dg[DVV] + " ";
         }
-        if (H !== -1 || CH !== -1 || DVV !== -1) {
-            if ((H !== 0 || CH !== 0 || DVV !== 0)) {
-                if (M > 0) CS += dv[M] + " ";
-                str = CS + str;
-            } else if (M > 0 && str.trim() === "" && M < dv.length) { /* No action */ } else if (M === 0 && s === "0") {
-                str = CS + str;
-            }
+        
+        if (CS.trim() !== "") {
+            str = CS + (dv[M] || '') + " " + str;
         }
         M++;
     }
-    str = str.replace(/ +/g, " ").trim();
-    if (str === "") return "Không đồng";
+    str = str.trim();
     return str.charAt(0).toUpperCase() + str.slice(1) + " đồng";
 }
 
-export function generateProfessionalQuoteId() { // For main quote ID
+/**
+ * Tạo ID báo giá chuyên nghiệp dựa trên ngày.
+ * @returns {string} ID báo giá.
+ */
+export function generateProfessionalQuoteId() {
     const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const datePrefix = `${year}${month}${day}`;
-    let dailyCounter = 1;
-    try {
-        const lastQuoteInfo = JSON.parse(localStorage.getItem('lastQuoteIdInfo')) || {};
-        if (lastQuoteInfo.date === datePrefix) {
-            dailyCounter = (lastQuoteInfo.counter || 0) + 1;
-        }
-        localStorage.setItem('lastQuoteIdInfo', JSON.stringify({
-            date: datePrefix,
-            counter: dailyCounter
-        }));
-    } catch (e) {
-        console.error("Failed to read/write lastQuoteIdInfo from localStorage", e);
-    }
-    return `${datePrefix}-${String(dailyCounter).padStart(3, '0')}`;
+    const datePrefix = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    const randomSuffix = Date.now().toString().slice(-5);
+    return `${datePrefix}-${randomSuffix}`;
 }
 
-export function generateUniqueId(prefix = 'id') { // For item IDs etc.
+/**
+ * Tạo ID duy nhất cho các hạng mục.
+ * @param {string} [prefix='id'] - Tiền tố cho ID.
+ * @returns {string} ID duy nhất.
+ */
+export function generateUniqueId(prefix = 'id') {
     return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
+/**
+ * Chuyển số thành số La Mã.
+ * @param {number} num - Số cần chuyển đổi.
+ * @returns {string} Chuỗi số La Mã.
+ */
 export function numberToRoman(num) {
     if (num < 1) return '';
     const val = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
@@ -116,21 +106,4 @@ export function numberToRoman(num) {
         }
     }
     return result;
-}
-export function getLocalStorageUsage() {
-    let totalBytes = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        const value = localStorage.getItem(key);
-        // Ước tính kích thước (UTF-16, 2 bytes/char) - một cách tiếp cận đơn giản và nhanh chóng
-        totalBytes += (key.length + value.length) * 2;
-    }
-    const totalStorage = 5 * 1024 * 1024; // Giả định 5MB
-    const percentage = Math.min((totalBytes / totalStorage) * 100, 100);
-
-    return {
-        used: totalBytes,
-        total: totalStorage,
-        percentage: percentage
-    };
 }

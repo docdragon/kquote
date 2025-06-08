@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ứng dụng Báo giá Cá Nhân v21</title>
+    <title>Ứng dụng Báo giá v22 - Firebase</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
 
@@ -15,6 +15,10 @@
 <body>
     <div class="container">
         <h1>Ứng dụng Tạo Báo giá</h1>
+        <div id="auth-container" class="no-print" style="text-align: center; padding: 10px; background-color: #f0f8ff; border-radius: 5px; margin-bottom: 15px;">
+            <p id="auth-status">Đang kết nối...</p>
+            <button id="logoutButton" style="display:none;" class="delete-btn small-btn">Đăng xuất</button>
+        </div>
 
         <div class="tabs no-print">
             <button class="tab-button active" data-tab="tabQuote">Báo Giá</button>
@@ -24,6 +28,7 @@
         </div>
 
         <div id="tabQuote" class="tab-content active">
+            <!-- Nội dung tab Báo giá không thay đổi -->
             <h2>Thông tin Chung Báo giá</h2>
             <div class="item-grid">
                 <div class="form-group">
@@ -239,6 +244,7 @@
         </div>
 
         <div id="tabCatalog" class="tab-content">
+            <!-- Nội dung tab Quản lý không thay đổi -->
             <h2>Quản Lý Danh Mục Sản phẩm/Dịch vụ</h2>
             <div class="form-group">
                 <label for="excelFileManage">1. Chọn file Excel (.xlsx, .xls, .csv) để tải danh mục:</label>
@@ -309,6 +315,7 @@
         </div>
 
         <div id="tabSettings" class="tab-content">
+             <!-- Nội dung tab Cài đặt không thay đổi, trừ việc bỏ đi phần Storage Status -->
              <h2>Cài Đặt Thông Tin Công Ty</h2>
              <div class="item-grid"> <div class="form-group"> <label for="companyNameSetting">Tên Công ty/Cá nhân:</label> <input type="text" id="companyNameSetting"> </div> <div class="form-group"> <label for="companyAddressSetting">Địa chỉ:</label> <input type="text" id="companyAddressSetting"> </div> </div>
              <div class="item-grid"> <div class="form-group"> <label for="companyPhoneSetting">Điện thoại:</label> <input type="text" id="companyPhoneSetting"> </div> <div class="form-group"> <label for="companyEmailSetting">Email:</label> <input type="email" id="companyEmailSetting"> </div> </div>
@@ -320,20 +327,16 @@
              <div class="form-group"> <label for="companyLogoFile">Logo (ảnh nhỏ, <1MB):</label> <input type="file" id="companyLogoFile" accept="image/*"> <img id="logoPreview" src="#" alt="Logo Preview"> </div>
              <button id="saveCompanySettingsButton" class="save-btn">Lưu</button>
              <hr>
-        <div id="storageStatusContainer" class="storage-status-container">
-                 <h3>Tình trạng lưu trữ</h3>
-                 <p id="storageText">Đang tính toán...</p>
-                 <div class="progress-bar-container">
-                     <div id="storageProgressBarFill" class="progress-bar-fill"></div>
-                 </div>
-             </div>
+             
+             <!-- Phần Storage Status đã bị xóa -->
 
              <h3 style="color: #dc3545;">Khu vực nguy hiểm</h3>
              <button id="clearAllDataButton" class="delete-btn">Xóa Toàn Bộ Dữ Liệu Ứng Dụng</button>
-             <p style="font-size:0.85em; color:#6c757d;"><i>LƯU Ý: Hành động này sẽ xóa tất cả các báo giá đã lưu, danh mục, và cài đặt công ty. Không thể hoàn tác.</i></p>
+             <p style="font-size:0.85em; color:#6c757d;"><i>LƯU Ý: Hành động này sẽ xóa tất cả các báo giá đã lưu, danh mục, và cài đặt công ty của người dùng hiện tại trên đám mây. Không thể hoàn tác.</i></p>
         </div>
         
         <div id="printableQuoteArea" style="display: none; width: 210mm; padding: 10mm; box-sizing: border-box;">
+            <!-- Phần in ấn không thay đổi -->
             <div class="print-header">
                 <img id="printableLogo" src="#" alt="Company Logo" class="company-logo-print" style="display:none;">
                 <div class="company-details-print" id="printableCompanyInfo">
@@ -404,6 +407,13 @@
         <div class="loader-spinner"></div>
     </div>
     
+    <!-- Tải Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+
+    <!-- Tải các modules của ứng dụng -->
+    <script src="js/firebase.js" type="module"></script>
     <script src="js/main.js" type="module"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 /* ============================================= */
-/* QUOTATION APP - STYLE.CSS (v22)               */
+/* QUOTATION APP - STYLE.CSS (v22 Firebase)      */
 /* ============================================= */
 
 body { 
@@ -355,37 +355,4 @@ input[type="file"] { padding: 5px; font-size: 0.9em; margin-bottom:15px; display
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-}
-.storage-status-container {
-    margin-top: 20px;
-    margin-bottom: 25px;
-    padding: 15px;
-    background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 5px;
-}
-.storage-status-container h3 {
-    text-align: left;
-    color: #343a40;
-    margin-top: 0;
-    font-size: 1.1em;
-}
-#storageText {
-    font-size: 0.9em;
-    color: #6c757d;
-}
-.progress-bar-container {
-    width: 100%;
-    background-color: #e9ecef;
-    border-radius: 5px;
-    overflow: hidden;
-}
-.progress-bar-fill {
-    width: 0%; /* Sẽ được cập nhật bằng JS */
-    height: 20px;
-    background-color: #0d6efd; /* Màu mặc định */
-    text-align: center;
-    line-height: 20px;
-    color: white;
-    transition: width 0.4s ease, background-color 0.4s ease;
 }
