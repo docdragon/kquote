@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ứng dụng Báo giá Cá Nhân v21</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
+
+    <link rel="stylesheet" href="style.css"> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Ứng dụng Tạo Báo giá</h1>
+
+        <div class="tabs no-print">
+            <button class="tab-button active" data-tab="tabQuote">Báo Giá</button>
+            <button class="tab-button" data-tab="tabSavedQuotes">Báo Giá Đã Lưu</button>
+            <button class="tab-button" data-tab="tabCatalog">Quản Lý</button>
+            <button class="tab-button" data-tab="tabSettings">Cài Đặt</button>
+        </div>
+
+        <div id="tabQuote" class="tab-content active">
+            <h2>Thông tin Chung Báo giá</h2>
+            <div class="item-grid">
+                <div class="form-group">
+                    <label for="customerName">Tên Khách hàng:</label>
+                    <input type="text" id="customerName">
+                </div>
+                <div class="form-group">
+                    <label for="customerAddress">Địa chỉ:</label>
+                    <input type="text" id="customerAddress">
+                </div>
+                <div class="form-group">
+                    <label for="quoteDate">Ngày báo giá:</label>
+                    <input type="date" id="quoteDate">
+                </div>
+            </div>
+            <div class="form-group">
+                 <label for="quoteNotes">Ghi chú chung (hiển thị trong PDF/In):</label>
+                 <textarea id="quoteNotes" rows="2"></textarea>
+            </div>
+
+            <hr class="no-print">
+            <div id="quoteItemEntryForm" class="no-print">
+                <h3>Thêm/Sửa chi tiết Hạng mục Báo giá:</h3>
+                <input type="hidden" id="editingQuoteItemIdForm">
+                <div class="form-group">
+                    <label for="quoteItemMainCategoryInput">Chọn hoặc nhập Danh mục chính:</label>
+                    <input type="text" id="quoteItemMainCategoryInput" list="mainCategoryDataList" placeholder="Chọn hoặc gõ để tạo DM chính mới...">
+                    <datalist id="mainCategoryDataList">
+                        <!-- Options populated by JS -->
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label for="catalogItemCombobox">1. Lọc và chọn nhanh từ danh mục:</label>
+                    <input type="text" id="catalogItemCombobox" list="catalogDatalist" placeholder="Gõ để tìm hoặc chọn hạng mục...">
+                    <datalist id="catalogDatalist">
+                        <!-- Options populated by JS -->
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label for="itemNameQuoteForm">2. Tên Hạng mục:</label>
+                    <input type="text" id="itemNameQuoteForm" placeholder="Ví dụ: Sơn Nippon">
+                </div>
+                <div class="form-group">
+                    <label for="itemSpecQuoteForm">3. Quy cách/Mô tả chi tiết:</label>
+                    <textarea id="itemSpecQuoteForm" rows="2" placeholder="Ví dụ: Loại A, màu X, bóng mờ..."></textarea>
+                </div>
+                <div class="item-grid">
+                    <div class="form-group">
+                        <label for="itemUnitQuoteForm">Đơn vị tính:</label>
+                        <input type="text" id="itemUnitQuoteForm" placeholder="Ví dụ: m², cái">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemPriceQuoteForm">Đơn giá (VNĐ):</label>
+                        <input type="number" id="itemPriceQuoteForm" placeholder="0" min="0">
+                    </div>
+                     <div class="form-group">
+                        <label for="itemDiscountValueForm">Giảm giá hạng mục:</label>
+                        <div style="display: flex;">
+                            <input type="number" id="itemDiscountValueForm" value="0" min="0" style="flex-grow: 1;">
+                            <select id="itemDiscountTypeForm" style="width: 80px; margin-left: 5px; flex-shrink: 0;">
+                                <option value="percent">%</option>
+                                <option value="amount">VNĐ</option>
+                            </select>
+                        </div>
+                    </div>
+                     <div class="form-group">
+                        <label for="itemCalcTypeQuoteForm">Cách tính giá:</label>
+                        <select id="itemCalcTypeQuoteForm">
+                            <option value="unit">Theo Đơn vị (Giá x SL)</option>
+                            <option value="length">Theo Chiều dài (Giá x Dài x SL)</option>
+                            <option value="area">Theo Diện tích (Giá x Dài x Cao x SL)</option> <option value="volume">Theo Thể tích (Giá x Dài x Cao x Sâu x SL)</option> </select>
+                    </div>
+                </div>
+                <div class="item-grid-col4">
+                     <div class="form-group">
+                        <label for="itemLengthQuoteForm">Dài (mm):</label>
+                        <input type="number" id="itemLengthQuoteForm" placeholder="Nếu có" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemHeightQuoteForm">Cao (mm):</label> <input type="number" id="itemHeightQuoteForm" placeholder="Nếu có" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemDepthQuoteForm">Sâu (mm):</label> <input type="number" id="itemDepthQuoteForm" placeholder="Nếu có" min="0" step="0.01">
+                    </div>
+                     <div class="form-group">
+                        <label for="itemQuantityQuoteForm">Số lượng (bộ/cái):</label>
+                        <input type="number" id="itemQuantityQuoteForm" value="1" min="0.01" step="0.01">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="itemImageFileQuoteForm">Hình ảnh hạng mục (nhỏ, <500KB):</label>
+                    <input type="file" id="itemImageFileQuoteForm" accept="image/*">
+                    <img id="itemImagePreviewQuoteForm" src="#" alt="Item Image Preview">
+                </div>
+                <button id="addOrUpdateItemButtonForm">Thêm vào Báo giá</button>
+                <button id="quickSaveToCatalogButtonForm" class="quick-save-to-catalog-btn" title="Lưu hạng mục này vào Danh mục chính">Lưu vào DM</button>
+                <button id="cancelEditQuoteItemButtonForm" class="clear-btn" style="display:none;">Hủy Sửa Item</button>
+            </div>
+            
+            <hr>
+            <h2>Chi tiết Báo giá Hiện tại</h2>
+            <div style="overflow-x:auto;">
+                <table id="quoteTablePreview">
+                    <thead>
+                        <tr>
+                            <th style="width:4%;">STT</th>
+                            <th style="width:12%;">Hình ảnh</th> <th style="width:28%;">Hạng Mục / Danh Mục Chính</th> 
+                            <th style="width:6%;">ĐVT</th>
+                            <th style="width:7%;">K.Lượng</th> <th style="width:5%;">SL</th> 
+                            <th style="width:9%;">Đơn giá</th>
+                            <th style="width:11%;">Thành tiền</th>
+                            <th class="no-print" style="width: auto;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemListPreview"></tbody>
+                </table>
+            </div>
+            <button id="prepareNewQuoteItemButton" class="add-new-row-btn no-print" style="margin-top:10px;" title="Xóa trắng form trên để nhập hạng mục mới">+ Chuẩn bị thêm hạng mục mới</button>
+            
+            <div class="total-section">
+                <div class="form-group-inline">
+                    <input type="checkbox" id="applyDiscountCheckbox" checked >
+                    <label for="applyDiscountCheckbox">Giảm giá:</label>
+                    <input type="number" id="discountValueInput" value="0" min="0">
+                    <select id="discountTypeSelect" style="width: 80px; margin-left: 5px;">
+                        <option value="percent">%</option>
+                        <option value="amount">VNĐ</option>
+                    </select>
+                    <span id="discountAmount" style="min-width: 100px; text-align:left; margin-left:5px;">(0 VNĐ)</span>
+                </div>
+                <div class="form-group-inline">
+                    <input type="checkbox" id="applyTaxCheckbox" checked >
+                    <label for="applyTaxCheckbox">Thuế VAT (%):</label>
+                    <input type="number" id="taxPercent" value="0" min="0">
+                    <span id="taxAmount" style="min-width: 100px; text-align:left; margin-left:5px;">(0 VNĐ)</span>
+                </div>
+                 <div><label>Tạm tính:</label><span id="subTotal">0 VNĐ</span></div>
+                <hr style="margin: 10px 0; border-color: #ddd;">
+                <div class="grand-total"><label>Tổng cộng:</label><span id="totalPrice">0 VNĐ</span></div>
+            </div>
+            
+            <div class="installments-section no-print">
+                <hr style="border-color: #007bff; border-width: 1px; margin-top: 25px;">
+                <div class="form-group-inline" style="justify-content: flex-start;">
+                    <input type="checkbox" id="applyInstallmentsCheckbox">
+                    <label for="applyInstallmentsCheckbox" style="font-weight: bold; font-size: 1.1em; color: #007bff;">Bật Lịch thanh toán theo đợt</label>
+                </div>
+                <div id="installmentsContainer" class="installments-container" style="display: none;">
+                    <div class="installment-row-header">
+                        <span>Nội dung đợt</span>
+                        <span>Giá trị</span>
+                        <span>Loại</span>
+                        <span>Thành tiền (VNĐ)</span>
+                    </div>
+                    <div class="installment-row">
+                        <input type="text" id="installmentName1" value="Đợt 1: Tạm ứng" placeholder="Nội dung đợt 1">
+                        <input type="number" id="installmentValue1" placeholder="Giá trị" min="0">
+                        <select id="installmentType1">
+                            <option value="percent">%</option>
+                            <option value="amount">VNĐ</option>
+                        </select>
+                        <span id="installmentAmount1" class="installment-amount-display">0 VNĐ</span>
+                    </div>
+                    <div class="installment-row">
+                        <input type="text" id="installmentName2" value="Đợt 2" placeholder="Nội dung đợt 2">
+                        <input type="number" id="installmentValue2" placeholder="Giá trị" min="0">
+                        <select id="installmentType2">
+                            <option value="percent">%</option>
+                            <option value="amount">VNĐ</option>
+                        </select>
+                        <span id="installmentAmount2" class="installment-amount-display">0 VNĐ</span>
+                    </div>
+                    <div class="installment-row">
+                        <input type="text" id="installmentName3" value="Đợt 3" placeholder="Nội dung đợt 3">
+                        <input type="number" id="installmentValue3" placeholder="Giá trị" min="0">
+                        <select id="installmentType3">
+                            <option value="percent">%</option>
+                            <option value="amount">VNĐ</option>
+                        </select>
+                        <span id="installmentAmount3" class="installment-amount-display">0 VNĐ</span>
+                    </div>
+                    <div class="installment-row">
+                        <input type="text" id="installmentName4" value="Đợt 4: Bàn giao" placeholder="Nội dung đợt 4">
+                        <input type="number" id="installmentValue4" placeholder="Giá trị" min="0">
+                        <select id="installmentType4">
+                            <option value="percent">%</option>
+                            <option value="amount">VNĐ</option>
+                        </select>
+                        <span id="installmentAmount4" class="installment-amount-display">0 VNĐ</span>
+                    </div>
+                    <div class="installment-summary">
+                        <span id="installmentsTotalPercent">Tổng %: <strong>0%</strong></span>
+                        <span>Tổng cộng các đợt: <strong id="installmentsTotalAmount">0 VNĐ</strong></span>
+                        <span>Còn lại: <strong id="installmentsRemainingAmount">0 VNĐ</strong></span>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="saveCurrentQuoteButton" class="save-btn no-print">Lưu Báo giá này</button>
+            <button id="exportPdfButton" class="pdf-btn no-print">Xuất PDF</button>
+            <button id="printQuoteButton" class="print-btn no-print">In Báo giá</button>
+            <button id="clearQuoteButton" class="clear-btn no-print">Làm mới Toàn bộ</button>
+        </div>
+
+        <div id="tabSavedQuotes" class="tab-content">
+            <h2>Danh sách Báo giá Đã lưu</h2>
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #eee;">
+                <table id="savedQuotesTable">
+                    <thead><tr><th>ID Báo giá</th><th>Khách hàng</th><th>Ngày tạo</th><th>Tổng tiền</th><th class="no-print">Hành động</th></tr></thead>
+                    <tbody id="savedQuotesList"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tabCatalog" class="tab-content">
+            <h2>Quản Lý Danh Mục Sản phẩm/Dịch vụ</h2>
+            <div class="form-group">
+                <label for="excelFileManage">1. Chọn file Excel (.xlsx, .xls, .csv) để tải danh mục:</label>
+                <input type="file" id="excelFileManage" accept=".xlsx, .xls, .csv">
+                <button id="reloadExcelButton" class="reload-excel-btn no-print" title="Mở lại hộp thoại chọn file">Tải/Chọn File Danh mục</button>
+                <p style="font-size:0.85em; color:#6c757d;"><i>File Excel cần có cột: `TenHangMuc`, `DonViTinh`, `DonGia`. Cột `QuyCach` và `ID` là tùy chọn.</i></p>
+            </div>
+            <div class="form-group">
+                <label for="catalogSearchInput">Lọc danh mục hiện tại:</label>
+                <input type="text" id="catalogSearchInput" placeholder="Gõ tên hoặc quy cách để lọc..." style="width: 70%;">
+            </div>
+            <h3>Danh mục hiện tại (<span id="catalogItemCount">0</span> hạng mục)</h3>
+            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; margin-bottom:15px;">
+                <table id="catalogPreviewTable">
+                    <thead><tr><th>ID</th><th>Tên Hạng Mục</th><th>Quy Cách</th><th>ĐVT</th><th>Đơn Giá</th><th class="no-print">Hành động</th></tr></thead>
+                    <tbody id="catalogPreviewList"></tbody>
+                </table>
+            </div>
+            <button id="exportCatalogButton" class="save-catalog-btn no-print">Tải về Danh mục hiện tại (Excel)</button>
+            
+            <hr class="no-print">
+            <h3>Quản Lý Danh Mục Chính</h3>
+            <div class="form-group">
+                <label for="mainCategoryNameInput">Tên Danh mục chính:</label>
+                <input type="text" id="mainCategoryNameInput" placeholder="Ví dụ: Hạng mục Sơn nước">
+                <input type="hidden" id="editingMainCategoryId">
+                <button id="addOrUpdateMainCategoryButton" class="no-print" style="margin-left: 10px;">Thêm/Cập nhật DM Chính</button>
+                <button id="cancelEditMainCategoryButton" class="clear-btn no-print" style="display:none; margin-left: 5px;">Hủy Sửa</button>
+            </div>
+            <h4>Danh sách Danh mục chính hiện có (<span id="mainCategoryCount">0</span>):</h4>
+            <div style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; margin-bottom:15px;">
+                <table id="mainCategoriesTable">
+                    <thead><tr><th style="width:10%;">STT</th><th>Tên Danh mục chính</th><th class="no-print" style="width:20%;">Hành động</th></tr></thead>
+                    <tbody id="mainCategoriesList"></tbody>
+                </table>
+            </div>
+
+            <hr class="no-print">
+            <h3>Thêm / Sửa Hạng mục trong Danh mục (trên trình duyệt)</h3>
+            <input type="hidden" id="editingCatalogEntryId">
+            <div class="form-group" style="display: none;"> 
+                <label for="catalogItemMainCategorySelect">Thuộc Danh mục chính (tùy chọn):</label> 
+                <select id="catalogItemMainCategorySelect"> 
+                    <option value="">-- Không chọn --</option>
+                </select> 
+            </div> 
+            
+            <div class="form-group">
+                <label for="catalogEditName">Tên Hạng mục:</label>
+                <input type="text" id="catalogEditName">
+            </div>
+             <div class="form-group">
+                <label for="catalogEditSpec">Quy cách/Mô tả chi tiết:</label>
+                <textarea id="catalogEditSpec" rows="2"></textarea>
+            </div>
+            <div class="item-grid">
+                <div class="form-group">
+                    <label for="catalogEditUnit">Đơn vị tính:</label>
+                    <input type="text" id="catalogEditUnit">
+                </div>
+                <div class="form-group">
+                    <label for="catalogEditPrice">Đơn giá (VNĐ):</label>
+                    <input type="number" id="catalogEditPrice" min="0">
+                </div>
+            </div>
+            <button id="saveCatalogEntryButton" class="no-print">Thêm/Cập nhật vào Danh mục</button>
+            <button id="cancelCatalogEntryEditButton" class="clear-btn no-print" style="display:none;">Hủy Sửa</button>
+        </div>
+
+        <div id="tabSettings" class="tab-content">
+             <h2>Cài Đặt Thông Tin Công Ty</h2>
+             <div class="item-grid"> <div class="form-group"> <label for="companyNameSetting">Tên Công ty/Cá nhân:</label> <input type="text" id="companyNameSetting"> </div> <div class="form-group"> <label for="companyAddressSetting">Địa chỉ:</label> <input type="text" id="companyAddressSetting"> </div> </div>
+             <div class="item-grid"> <div class="form-group"> <label for="companyPhoneSetting">Điện thoại:</label> <input type="text" id="companyPhoneSetting"> </div> <div class="form-group"> <label for="companyEmailSetting">Email:</label> <input type="email" id="companyEmailSetting"> </div> </div>
+             <div class="form-group"> <label for="companyTaxIdSetting">Mã số thuế (Nếu có):</label> <input type="text" id="companyTaxIdSetting"> </div>
+             <div class="form-group">
+                 <label for="companyBankAccountSetting">Thông tin chuyển khoản (Ngân hàng, STK, Chủ TK):</label>
+                 <textarea id="companyBankAccountSetting" rows="3"></textarea>
+             </div>
+             <div class="form-group"> <label for="companyLogoFile">Logo (ảnh nhỏ, <1MB):</label> <input type="file" id="companyLogoFile" accept="image/*"> <img id="logoPreview" src="#" alt="Logo Preview"> </div>
+             <button id="saveCompanySettingsButton" class="save-btn">Lưu</button>
+             <hr>
+        <div id="storageStatusContainer" class="storage-status-container">
+                 <h3>Tình trạng lưu trữ</h3>
+                 <p id="storageText">Đang tính toán...</p>
+                 <div class="progress-bar-container">
+                     <div id="storageProgressBarFill" class="progress-bar-fill"></div>
+                 </div>
+             </div>
+
+             <h3 style="color: #dc3545;">Khu vực nguy hiểm</h3>
+             <button id="clearAllDataButton" class="delete-btn">Xóa Toàn Bộ Dữ Liệu Ứng Dụng</button>
+             <p style="font-size:0.85em; color:#6c757d;"><i>LƯU Ý: Hành động này sẽ xóa tất cả các báo giá đã lưu, danh mục, và cài đặt công ty. Không thể hoàn tác.</i></p>
+        </div>
+        
+        <div id="printableQuoteArea" style="display: none; width: 210mm; padding: 10mm; box-sizing: border-box;">
+            <div class="print-header">
+                <img id="printableLogo" src="#" alt="Company Logo" class="company-logo-print" style="display:none;">
+                <div class="company-details-print" id="printableCompanyInfo">
+                    <p><strong id="printableCompanyName"></strong></p>
+                    <p>Đ/c: <span id="printableCompanyAddress"></span></p>
+                    <p>ĐT: <span id="printableCompanyPhone"></span> | Email: <span id="printableCompanyEmail"></span></p>
+                    <p>MST: <span id="printableCompanyTaxId"></span></p>
+                </div>
+            </div>
+            <h2 style="font-size:18pt; text-transform: uppercase; margin-top: 15px; margin-bottom:15px;">BÁO GIÁ</h2>
+            <div class="quote-meta">
+                <div>
+                    <p><strong>Ngày báo giá:</strong> <span id="printQuoteDate"></span></p>
+                    <p><strong>Mã báo giá:</strong> <span id="printQuoteIdEl"></span></p>
+                </div>
+            </div>
+            <hr style="border-top: 1px solid #555; margin: 10px 0;">
+            <div class="customer-details">
+                <p><strong>Kính gửi:</strong> <span id="printCustomerName"></span></p>
+                <p><strong>Địa chỉ:</strong> <span id="printCustomerAddress"></span></p>
+            </div>
+            <table id="printQuoteTable" style="margin-top:10px;">
+                <thead>
+                    <tr>
+                        <th style="width:3%;">STT</th>
+                        <th style="width:18%;">Hình ảnh</th> <th style="width:32%;">Hạng Mục / Danh Mục Chính</th> <th style="width:7%;">ĐVT</th>
+                        <th style="width:7%;">K.Lượng</th> 
+                        <th style="width:5%;">SL</th>
+                        <th style="width:8%;">Đơn giá</th>
+                        <th style="width:10%;">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody id="printItemList"></tbody>
+            </table>
+            <div class="summary-section" style="margin-top:15px;">
+                <p id="printSubTotalLine"><span>Tạm tính:</span> <strong id="printSubTotal"></strong></p>
+                <p id="printDiscountLine" style="display:none;"><span>Giảm giá:</span> <strong id="printDiscountAmount"></strong></p>
+                <p id="printSubTotalAfterDiscountLine" style="display:none;"><span>Thành tiền sau giảm giá:</span> <strong id="printSubTotalAfterDiscount"></strong></p>
+                <p id="printTaxLine" style="display:none;"><span>Thuế VAT (<span id="printTaxPercent"></span>%):</span> <strong id="printTaxAmount"></strong></p>
+                <p class="grand-total-print" style="border-top:1px solid #333; padding-top:8px; margin-top:8px;">
+                    <strong>TỔNG CỘNG THANH TOÁN:</strong> <strong id="printTotalPrice"></strong>
+                </p>
+                <p style="margin-top:5px;"><i>(Bằng chữ: <span id="printTotalInWords" style="font-weight:bold;"></span>)</i></p>
+            </div>
+            
+            <div class="payment-schedule-print" id="paymentSchedulePrint" style="display:none; margin-top: 20px;">
+                <h3 style="text-align: left; font-size: 11pt; margin-bottom: 5px; text-transform: uppercase;">Lịch thanh toán</h3>
+                <div id="paymentScheduleBodyPrint"></div>
+            </div>
+
+            <div class="payment-info-print" id="paymentInfoPrint" style="display: none; margin-top: 15px;">
+                 <h3 style="text-align: left; font-size: 11pt; margin-bottom: 5px; text-transform: uppercase;">Thông tin thanh toán</h3>
+                 <p id="paymentInfoBodyPrint" style="white-space: pre-wrap;"></p>
+            </div>
+             
+             <div class="quote-notes-print" style="margin-top:20px;">
+                <p><strong>Ghi chú chung:</strong></p>
+                <p id="printQuoteNotes" style="white-space: pre-wrap; min-height:30px; border: 1px dashed #eee; padding:5px;"></p>
+            </div>
+            <div class="signatures">
+                <div><p>Khách hàng</p><p>(Ký, ghi rõ họ tên)</p><br><br><br></div>
+                <div><p>Người lập báo giá</p><p>(Ký, ghi rõ họ tên)</p><br><br><br></div>
+            </div>
+        </div>
+    </div> 
+    
+    <div id="loader" class="loader-overlay" style="display: none;">
+        <div class="loader-spinner"></div>
+    </div>
+    
+    <script src="js/main.js" type="module"></script>
+</body>
+</html>
